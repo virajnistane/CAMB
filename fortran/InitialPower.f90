@@ -119,6 +119,7 @@
 
     function TInitialPowerLaw_ScalarPower(this, k)
     class(TInitialPowerLaw) :: this
+    class(TCAMBParameters), intent(in) :: Params
     real(dl), intent(in) :: k
     real(dl) TInitialPowerLaw_ScalarPower
     real(dl) lnrat
@@ -136,10 +137,17 @@
     !< |\Delta(x)|^2 > = \int dk/k ScalarPower(k)
     !For the isocurvture velocity mode ScalarPower is the power in the neutrino heat flux.
 
+    real(dl) sigma_add
+    real(dl) mu_add
+    real(dl) A_add
 
     lnrat = log(k/this%pivot_scalar)
+    A_add = 1*10**(-6)
+    sigma_add = 1  !in Mpc^-1
+    mu_add = 16.00397287343059 ! in h/Mpc
     TInitialPowerLaw_ScalarPower = this%As * exp(lnrat * (this%ns - 1 + &
-        &             lnrat * (this%nrun / 2 + this%nrunrun / 6 * lnrat)))
+        &             lnrat * (this%nrun / 2 + this%nrunrun / 6 * lnrat))) + &
+        &             A_add/sqrt(2*const_pi*sigma_add) * exp(-(k-mu_add*(Params%H0/100))**2 /2/sigma_add)
 
     end function TInitialPowerLaw_ScalarPower
 
