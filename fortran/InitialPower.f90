@@ -118,8 +118,9 @@
     end subroutine TInitialPowerLaw_Init
 
     function TInitialPowerLaw_ScalarPower(this, k)
+    use constants
     class(TInitialPowerLaw) :: this
-    class(TCAMBParameters), intent(in) :: Params
+    !class(TCAMBParameters), intent(in) :: Params
     real(dl), intent(in) :: k
     real(dl) TInitialPowerLaw_ScalarPower
     real(dl) lnrat
@@ -147,7 +148,7 @@
     mu_add = 16.00397287343059 ! in h/Mpc
     TInitialPowerLaw_ScalarPower = this%As * exp(lnrat * (this%ns - 1 + &
         &             lnrat * (this%nrun / 2 + this%nrunrun / 6 * lnrat))) + &
-        &             A_add/sqrt(2*const_pi*sigma_add) * exp(-(k-mu_add*(Params%H0/100))**2 /2/sigma_add)
+        &             A_add/sqrt(2*const_pi*sigma_add) * exp(-(k-mu_add*(0.7))**2 /2/sigma_add)
 
     end function TInitialPowerLaw_ScalarPower
 
