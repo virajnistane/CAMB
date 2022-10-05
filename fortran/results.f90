@@ -3760,6 +3760,7 @@
                     if(State%CP%NonLinear/=NonLinear_none .and. State%CP%NonLinear/=NonLinear_Lens) then
                         call State%CP%NonLinearModel%GetNonLinRatios(State, PK_data)
                         PK_data%matpower = PK_data%matpower +  2*log(PK_data%nonlin_ratio)
+                        !PK_data%matpower =  2*log(PK_data%nonlin_ratio)
                         call MatterPowerdata_getsplines(PK_data)
                     end if
                 end if
