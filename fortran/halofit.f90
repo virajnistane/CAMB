@@ -1712,6 +1712,17 @@
     IF(p_2h<0.) p_2h=0.
 
     END FUNCTION p_2h
+    
+    FUNCTION rvir_Mhalo(m,z,cosm)
+    REAL(dl) :: rvir_Mhalo
+    REAL(dl), INTENT(IN) :: m, z
+    TYPE(HM_cosmology), INTENT(IN) :: cosm
+    REAL(dl) :: rhoc0_Mpc, Omh2
+    rhoc0_Mpc = 2.775e11
+    ! Omh2 = 0.14237
+    Omh2 = cosm%om_m
+    rvir_Mhalo = (3/4/pi_HM*m/200/rhoc0_Mpc/Omh2)**(1/3)/(1+z) 
+    END FUNCTION rvir_Mhalo 
 
     FUNCTION p_1h(this,k,z,lut,cosm)
     class(THalofit) :: this
@@ -1720,9 +1731,9 @@
     REAL(dl), INTENT(IN) :: k, z
     TYPE(HM_tables), INTENT(IN) :: lut
     TYPE(HM_cosmology), INTENT(IN) :: cosm
-    REAL(dl) :: Dv, g, fac, et, ks, wk, x, m
-    REAL(dl) :: integrand(lut%n)
-    REAL(dl) :: sum
+    REAL(dl) :: Dv, g, fac, et, ks, wk, x, m, rv, mhalo, krv, conci, nu
+    REAL(dl) :: integrand !(lut%n)
+    REAL(dl) :: summ, zz
     INTEGER :: i
     REAL(dl), PARAMETER :: pi=pi_HM
     INTEGER, PARAMETER :: iorder=iorder_integration_1h
@@ -1731,21 +1742,32 @@
     et=this%eta(lut,cosm)
 
     !Calculates the value of the integrand at all nu values!
-    DO i=1,lut%n
-        m=lut%m(i)
-        g=gnu(lut%nu(i))
-        wk=win(k*lut%nu(i)**et,lut%rv(i),lut%c(i))
-        IF(this%imead==5) wk=baryonify_wk(wk, m, lut, cosm)
-        integrand(i)=g*(wk**2)*lut%m(i)
-    END DO
+    !DO i=1,lut%n
+    !    m=lut%m(i)
+    !    g=gnu(lut%nu(i))
+    !    wk=win(k*lut%nu(i)**et,lut%rv(i),lut%c(i))
+    !    IF(this%imead==5) wk=baryonify_wk(wk, m, lut, cosm)
+    !    integrand(i)=g*(wk**2)*lut%m(i)
+    !END DO
+
+    mhalo=1e10
+    zz=15
+    rv=rvir_Mhalo(mhalo,zz,cosm) 
+    conci=2
+    nu=1
+
+    g=1 !gnu(lut%nu(i))
+    wk=win(k *nu**et,rv,conci)
+    integrand=g*(wk**2)*mhalo
 
     IF(this%imead==3 .OR. this%imead==4) integrand=integrand*(1.-cosm%f_nu)**2
 
     !Carries out the integration
-    sum=inttab(lut%nu,integrand,1,lut%n,iorder)/cosmic_density(cosm)
+    !summ=inttab(lut%nu,integrand,1,lut%n,iorder)/cosmic_density(cosm)
+    summ=integrand/cosmic_density(cosm)
 
     !Numerical factors to convert from P(k) to Delta^2(k)
-    p_1h=sum*k**3/(2.*pi**2)
+    p_1h=summ * (k)**3/(2*pi**2)
  
     IF(this%imead==1 .OR. this%imead==2) THEN
         !Damping of the 1-halo term at very large scales
