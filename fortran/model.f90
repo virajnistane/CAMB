@@ -147,6 +147,12 @@
         real(dl)  :: Nu_mass_fractions(max_nu) !The ratios of the total densities
         integer   :: Nu_mass_numbers(max_nu) !physical number per eigenstate
 
+!! by H.T
+        real(dl)  :: m_ucmh = 1.e3 !
+        real(dl)  :: z_form = 0. !
+        real(dl)  :: z_suv = 0. !
+!!
+
         class(TInitialPower), allocatable :: InitPower
         class(TRecombinationModel), allocatable :: Recomb
         class(TReionizationModel), allocatable :: Reion

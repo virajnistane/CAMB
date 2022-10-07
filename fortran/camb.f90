@@ -419,6 +419,12 @@
 
     P%h0 = Ini%Read_Double('hubble')
 
+    !! by H.T
+    P%m_ucmh = Ini%Read_Double('m_ucmh')
+    P%z_form = Ini%Read_Double('z_form')
+    P%z_suv = Ini%Read_Double('z_suv')
+    !!
+
     if (Ini%Read_Logical('use_physical', .true.)) then
         P%ombh2 = Ini%Read_Double('ombh2')
         P%omch2 = Ini%Read_Double('omch2')

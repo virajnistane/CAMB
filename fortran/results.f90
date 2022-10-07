@@ -1004,7 +1004,12 @@
                 NLL_redshifts(1) = this%Redshift_w(1)%Redshift
             else
                 P%kmax = max(P%kmax,5*NL_Boost)
-                maxRedshift = 10
+
+!! by H.T
+!                maxRedshift = 10
+                maxRedshift = 20
+!!!
+
                 NLL_num_redshifts =  nint(10*5*NL_Boost)
                 if (NL_Boost>=2.5) then
                     !only notionally more accuracy, more stable for RS

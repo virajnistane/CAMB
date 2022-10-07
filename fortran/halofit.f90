@@ -61,6 +61,9 @@
     integer, parameter :: halofit_mead=halofit_mead2016 ! AM Kept for backwards compatability
     integer, parameter :: halofit_default=halofit_mead2020
 
+    integer, parameter :: halofit_UCMH=100 ! by H.T
+
+
     logical :: HM_verbose = .false.
 
     type, extends(TNonLinearModel) :: THalofit
@@ -73,6 +76,10 @@
         integer, private :: imead !!AM - added these for HMcode, need to be visible to all subroutines and functions
         real(dl), private :: om_m,om_v,fnu,omm0, acur, w_hf, wa_hf
         real(dl), private :: om_c, om_b
+
+        integer, private :: ucmh=0 !!by H.T this%ucmh
+        integer, private :: comp=0 !!by H.T this%comp
+
     contains
     procedure :: ReadParams => THalofit_ReadParams
     procedure :: GetNonLinRatios => THalofit_GetNonLinRatios
@@ -102,6 +109,8 @@
     public halofit_mead2020_feedback
     public halofit_mead ! AM for backwards compatability
 
+    public halofit_UCMH ! by H.T
+
     TYPE HM_cosmology
         !Contains only things that do not need to be recalculated with each new z
         REAL(dl) :: om_m, om_c, om_b, om_nu, om_v, w, wa, f_nu, ns, h, Tcmb, Nnu
@@ -117,6 +126,10 @@
         REAL(dl) :: A_baryon=3.13
         REAL(dl) :: eta_baryon=0.603
         REAL(dl) :: logT_AGN=7.8
+
+        !! by H.T
+        real(dl), private :: m_ucmh, z_form, z_suv
+
     END TYPE HM_cosmology
 
     TYPE HM_tables
@@ -259,6 +272,8 @@
         this%HMcode_logT_AGN = Ini%Read_Double('HMcode_logT_AGN', 7.8_dl)
     END IF
 
+    this%comp = Ini%Read_Int('component', 0)
+
     end subroutine THalofit_ReadParams
 
     subroutine THalofit_GetNonLinRatios(this,State,CAMB_Pk)
@@ -279,12 +294,15 @@
     select type (State)
     class is (CAMBdata)
         associate(Params => State%CP)
-
             IF(this%halofit_version==halofit_mead2016 .OR. &
                 this%halofit_version==halofit_halomodel .OR. &
                 this%halofit_version==halofit_mead2015 .OR. &
                 this%halofit_version==halofit_mead2020 .OR. &
-                this%halofit_version==halofit_mead2020_feedback) THEN
+!                this%halofit_version==halofit_mead2020_feedback) THEN
+!! by H.T
+                this%halofit_version==halofit_mead2020_feedback .OR. &
+                this%halofit_version==halofit_UCMH) THEN
+!!
                 CALL this%HMcode(State,CAMB_Pk)
             ELSE
 
@@ -568,6 +586,10 @@
     IF(this%halofit_version==halofit_mead2016) this%imead=1
     IF(this%halofit_version==halofit_mead2015) this%imead=2
     IF(this%halofit_version==halofit_mead2020) this%imead=3
+!! by H.T
+    IF(this%halofit_version==halofit_UCMH) this%imead=3
+    IF(this%halofit_version==halofit_UCMH) this%ucmh=1
+!!
 
     HM_verbose = (FeedbackLevel>1)
 
@@ -853,6 +875,12 @@
     TYPE(HM_cosmology), INTENT(IN) :: cosm
     TYPE(HM_tables), INTENT(IN) :: lut
 
+!! by H.T
+    REAL(dl) :: comp=1.
+
+    If (this%comp == 1 .or. this%comp == 2) comp=0.
+!
+
     !Calls expressions for one- and two-halo terms and then combines
     !to form the full power spectrum
     IF(k==0.) THEN
@@ -860,7 +888,7 @@
         p2h=0.
     ELSE
         p1h=this%p_1h(k,z,lut,cosm)
-        p2h=this%p_2h(k,plin,lut,cosm)
+        p2h=this%p_2h(k,plin,lut,cosm)*comp
     END IF
 
     IF (this%imead==1 .OR. this%imead==2 .OR. this%imead==3) THEN
@@ -1051,6 +1079,12 @@
         cosm%Tcmb=CP%tcmb
         cosm%Nnu=CP%Num_Nu_massive
         cosm%ns= CP%InitPower%Effective_ns()
+
+        !! by H.T
+        cosm%m_ucmh=CP%m_ucmh
+        cosm%z_form=CP%z_form
+        cosm%z_suv=CP%z_suv
+        !!
     end associate
 
     ! Baryon feedback parameters
@@ -1727,6 +1761,11 @@
     REAL(dl), PARAMETER :: pi=pi_HM
     INTEGER, PARAMETER :: iorder=iorder_integration_1h
 
+!! by H.T
+    REAL(dl) ::rv_ucmh, c_ucmh, m_ucmh, r_ucmh, comp =1.
+!!
+
+
     !Only call eta once
     et=this%eta(lut,cosm)
 
@@ -1764,6 +1803,30 @@
         x=(k/ks)**4
         p_1h=p_1h*x/(1.+x)
     END IF
+
+!! by H.T
+   IF(this%UCMH==1) THEN
+    If (this%comp == 2) comp=0.
+
+    m_ucmh = cosm%m_ucmh
+
+    g=gnu_UCMH(z,m_ucmh, cosm)
+
+    r_ucmh=radius_m(m_ucmh,cosm)
+
+    Dv=this%Delta_v(cosm%z_form,cosm)
+    rv_ucmh=r_ucmh/(Dv**(1/3._dl))
+
+    c_ucmh=2.
+    wk=win(k,rv_ucmh, c_ucmh)
+
+    integrand(i)=g*(wk**2)*m_ucmh
+    sum=integrand(i)/cosmic_density(cosm)
+
+    !Numerical factors to convert from P(k) to Delta^2(k)
+    p_1h=p_1h*comp +sum*k**3/(2.*pi**2)
+   END IF
+
 
     END FUNCTION p_1h
 
@@ -2418,8 +2481,52 @@
 
     !Sheth & Torman (1999)
     gnu=gst(nu)
-
     END FUNCTION gnu
+
+    FUNCTION gnu_UCMH(z, m_ucmh, cosm)
+    !Select the mass function
+    REAL(dl) :: gnu_UCMH
+    REAL(dl), INTENT(IN) :: z
+    TYPE(HM_cosmology), INTENT(IN) :: cosm
+    REAL(dl) :: coef, Omh2, fnum
+
+    REAL(dl) :: co9,co8,co7,co6,co5,co4,co3,co2,co1,co0
+    REAL(dl) :: ks_Mini, delc = 1.69
+
+    REAL(dl) :: m_UCMH, Amat, x
+
+    x = (1.+z)/(1+cosm%z_form)
+
+    co9= 6.996198321753572e-06
+    co8= -0.0002729316998107367
+    co7= 0.004471999614784437
+    co6= -0.03965754316082687
+    co5= 0.2028524979348207
+    co4= -0.5763758669674479
+    co3= 0.7170901280797696
+    co2= -0.3709578691527533
+    co1= 0.06186278239863147
+    co0= -0.001219952115903879
+
+    fnum = co0+co1*x+co2*x**2+co3*x**3+co4*x**4+co5*x**5+co6*x**6+co7*x**7+co8*x**8+co9*x**9
+
+    Omh2 = cosm%Om_m*cosm%h**2
+    ks_Mini=2*const_pi*(m_UCMH/(2.775d11*Omh2))**(-1./3.)
+    coef = ks_Mini**3/4/const_pi/const_pi/sqrt(27.)/ 1.03 /const_pi
+    !/ 1.03 / np.pi : correction  to match the theory
+
+    gnu_UCMH = exp(fnum)*coef
+    gnu_UCMH = exp(fnum)
+
+
+    if (x>8) gnu_UCMH =0.
+    if (z<cosm%z_suv) gnu_UCMH =0.
+
+!print*,cosm%z_suv, cosm%z_form
+
+    END FUNCTION gnu_UCMH
+
+
 
     FUNCTION gst(nu)
     !Sheth & Tormen (1999) mass function!
