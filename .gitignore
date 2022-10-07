@@ -13,6 +13,7 @@ Debuglib/
 Release/
 Releaselib/
 WinDLL/
+output/
 *.suo
 *.d
 *.bat
