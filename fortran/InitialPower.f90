@@ -118,6 +118,7 @@
     end subroutine TInitialPowerLaw_Init
 
     function TInitialPowerLaw_ScalarPower(this, k)
+    use constants
     class(TInitialPowerLaw) :: this
     real(dl), intent(in) :: k
     real(dl) TInitialPowerLaw_ScalarPower
@@ -135,11 +136,17 @@
     !This power spectrum is also used for isocurvature modes where
     !< |\Delta(x)|^2 > = \int dk/k ScalarPower(k)
     !For the isocurvture velocity mode ScalarPower is the power in the neutrino heat flux.
-
+    real(dl) sigma_add
+    real(dl) mu_add
+    real(dl) A_add
+    A_add = 1e-6
+    sigma_add = 1 * 0.67**2  !in Mpc^-1
+    mu_add = 16.00397287343059 * 0.67  ! in 1/Mpc
 
     lnrat = log(k/this%pivot_scalar)
     TInitialPowerLaw_ScalarPower = this%As * exp(lnrat * (this%ns - 1 + &
-        &             lnrat * (this%nrun / 2 + this%nrunrun / 6 * lnrat)))
+        &             lnrat * (this%nrun / 2 + this%nrunrun / 6 * lnrat))) + &
+        &             A_add/sqrt(2*const_pi*sigma_add) * exp(-(k-mu_add)**2 /2/sigma_add)
 
     end function TInitialPowerLaw_ScalarPower
 
